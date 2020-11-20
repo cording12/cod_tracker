@@ -166,13 +166,6 @@ def load_data():
         with open(fname, "a", newline="") as file:
             csv_file = csv.writer(file)
 
-            # try:
-            #     for result in data["errors"]:
-            #         err_code = result["code"]
-            #         ()
-            # except:
-            #     ()
-
             try:
                 for match in data["data"]["matches"]:
                     # Gets match specific data

@@ -1,0 +1,5 @@
+dark_blue_hex = "#001432"
+aqua_hex = "#26ede8"
+light_aqua_hex = "#7ab3c2"
+purple_hex = "#6610f2"
+blue_hex = "#052BF9"

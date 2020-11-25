@@ -1,11 +1,14 @@
 from get_cw_dataframe import load_data
 from get_bo4_dataframe import load_data_bo4
 from user_download import get_table_download_link
+from chart_theme import streamlit_theme, streamlit_theme_alt
 import streamlit as st
 import pandas as pd
 import altair as alt
 import numpy as np
 import colours
+
+# TODO There is an issue when loading only the CW data instead of both Bo4 and CW.
 
 # Initialise the sidebar and gets the user's options
 with st.sidebar:
@@ -17,7 +20,7 @@ with st.sidebar:
 # Converts platform to required string for API call
 if platform == "Xbox":
     platform_picked = "xbl"
-elif platform == "Playstation":
+else:
     # Can test playstation username with SeanEDawgz
     platform_picked = "psn"
 
@@ -47,8 +50,7 @@ def data_load_sequence_bo4(plyr, pltf):
 
 try:
     player_data = data_load_sequence(playername, platform_picked)
-    # player_data["index_col"] = player_data.reset_index().index
-    player_data["match_number"] = np.arange(1, len(player_data)+1)
+    player_data["match_number"] = np.arange(1, len(player_data) + 1)
     player_data["Game"] = "Cold War"
     error_collector = 0
 except:
@@ -89,9 +91,115 @@ else:
     if player_data_bo4.empty:
         all_data_frame = player_data
     else:
-        # bo4_recent_matches_df = player_data_bo4.head(recent_matches + 1)
         frames = [player_data, player_data_bo4]
         all_data_frame = pd.concat(frames, keys=["CW", "BO4"])
+
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    # Adds the user performance boxes
+    # Apply to Cold War dataframe only
+
+    # # # # # # # # # # # # Map # # # # # # # # # # # #
+    # Group dataframe based on map name; values as averages
+    map_mean_df = player_data.groupby(["map_name"]).mean()
+    map_mean_df = map_mean_df.reset_index()
+
+    # Get the largest KD value
+    max_kd_value = map_mean_df[kd_ratio].max()
+    max_kd_value_formatted = "%0.2f" % max_kd_value
+
+    # Get the index position of largest KD value
+    max_kd_index_pos = map_mean_df[kd_ratio].idxmax()
+
+    # Get the map name based off index position
+    best_map_name = map_mean_df.loc[max_kd_index_pos, "map_name"]
+
+    # Use the map name to get the map URl
+    map_img_index_pos = player_data[player_data["map_name"] == best_map_name].index.values
+    # Just added the .min to get the first value from the list of values
+    map_img_url = player_data.loc[map_img_index_pos.min(), "map_img"]
+
+    # # # # # # # # # # # # Mode # # # # # # # # # # # #
+    # Group dataframe based on game mode; value as averages
+    mode_mean_df = player_data.groupby(["mode"]).mean()
+    mode_mean_df = mode_mean_df.reset_index()
+
+    # Get largest KD values
+    max_kd_value_mode = mode_mean_df[kd_ratio].max()
+    max_kd_value_formatted_mode = "%0.2f" % max_kd_value_mode
+
+    # Get the index position of largest KD value
+    max_kd_index_pos_mode = mode_mean_df[kd_ratio].idxmax()
+
+    # Get the mode name based off index position
+    best_mode_name = mode_mean_df.loc[max_kd_index_pos_mode, "mode"]
+
+    # No mode image generated through the API so using the same as tracker.gg
+    mode_img_url = "https://trackercdn.com/cdn/cod.tracker.gg/modern-warfare/images/top-weapons-bg.jpg"
+
+    # Create table for top 3 map results
+    map_table_data = map_mean_df[["map_name", kills_type, kd_ratio]]
+    map_table = map_table_data.sort_values(by=[kd_ratio], ascending=False)
+    map_table = map_table.set_index("map_name")
+
+    # Get top 3 only
+    map_table_top3 = map_table.head(3)
+
+    # Format the table results
+    map_table = map_table_top3.style.format({
+        kd_ratio: '{:,.2f}'.format,
+        kills_type: '{:,.0f}'.format,
+    })
+
+    # Create table for top 3 game mode results
+    mode_table_data = mode_mean_df[["mode", kills_type, kd_ratio]]
+    mode_table = mode_table_data.sort_values(by=[kd_ratio], ascending=False)
+    mode_table = mode_table.set_index("mode")
+
+    # Get top 3 only
+    mode_table_top3 = mode_table.head(3)
+
+    # Format the table results
+    mode_table = mode_table_top3.style.format({
+        kd_ratio: '{:,.2f}'.format,
+        kills_type: '{:,.0f}'.format,
+    })
+
+
+    # Define two columns
+    col1, col2 = st.beta_columns((2))
+
+    with col1:
+        st.subheader("Map summary")
+        # st.image(map_img_url, use_column_width=True)
+        st.table(map_table)
+        st.info(f"**Best map by KD**"
+                f"\n\n{best_map_name}"
+                f"\n\nKD: {max_kd_value_formatted}"
+                )
+        # st.markdown(
+        #     """
+        #     <style>
+        #     .st-ae.st-af.st-ag.st-ah.st-ai.st-aj.st-ak.st-al.st-am.st-ep.st-ao.st-ap.st-aq.st-ar.st-as.st-at.st-au.st-av.st-aw.st-ax.st-ay.st-az.st-b9.st-b1.st-b2.st-b3.st-b4.st-b5.st-b6{
+        #         background-image: url("map_img_url");
+        #     }
+        #
+        #     .stBlock.st-d7.st-d8.st-d9{
+        #         background-image: url("map_img_url"); /* The image used */
+        #         background-color: #cccccc; /* Used if the image is unavailable */
+        #     }
+        #     </style>
+        #     """,
+        #     unsafe_allow_html=True
+        # )
+
+    with col2:
+        st.subheader("Mode summary")
+        # st.image(mode_img_url, use_column_width=True)
+        st.table(mode_table)
+        st.info(f"**Best game mode by KD**"
+                f"\n\n{best_mode_name}"
+                f"\n\nKD: {max_kd_value_formatted_mode}"
+                )
 
     # Map and mode filters
     filter_expander = st.beta_expander("Filter data", expanded=False)
@@ -141,7 +249,7 @@ else:
                 if not player_data[player_data["map_name"].isin(map_filter)].empty:
                     # If it is in Cold War dataframe, check now to see if in Bo4 dataframe
                     if not player_data_bo4[player_data_bo4["map_name"].isin(map_filter)].empty:
-                        # st.write("Maps in both dataframes")
+                        # Maps in both dataframes
                         # GET CW DATA
                         cw_data = filtered_df.loc["CW"]
                         cw_filtered = cw_data.head(recent_matches)
@@ -183,8 +291,22 @@ else:
 
                 # Final dataframe
                 final_data_frame = pd.concat([cw_filtered, bo4_filtered], keys=["CW", "BO4"])
+
+                # Converts below columns to Float64 from Object types
+                final_data_frame["accuracy"] = pd.to_numeric(final_data_frame["accuracy"])
+                final_data_frame["shotslanded"] = pd.to_numeric(final_data_frame["shotslanded"])
+                final_data_frame["shots_missed"] = pd.to_numeric(final_data_frame["shots_missed"])
+                final_data_frame["shots_fired"] = pd.to_numeric(final_data_frame["shots_fired"])
+
+
         else:
             final_data_frame = filtered_df.head(recent_matches)
+
+            # Converts below columns to Float64 from Object types
+            final_data_frame["accuracy"] = pd.to_numeric(final_data_frame["accuracy"])
+            final_data_frame["shotslanded"] = pd.to_numeric(final_data_frame["shotslanded"])
+            final_data_frame["shots_missed"] = pd.to_numeric(final_data_frame["shots_missed"])
+            final_data_frame["shots_fired"] = pd.to_numeric(final_data_frame["shots_fired"])
 
     # Uncomment here to see the resulting dataframe after adding/removing filters
     # st.write(final_data_frame)
@@ -195,6 +317,11 @@ else:
     rounded_kd = "%0.2f" % average_kd
 
     st.subheader(f"Average {kd_type_str} is {rounded_kd}")
+
+    # Imports and applies Altair theme from chart_theme.py
+    # This will apply to all charts on the page
+    alt.themes.register("streamlit", streamlit_theme)
+    alt.themes.enable("streamlit")
 
     # Sets the chart base
     base = alt.Chart(final_data_frame).encode(
@@ -208,7 +335,8 @@ else:
         kills_type_title = "Kills"
 
     # Configures the area portion of the chart
-    kills_area = alt.Chart(final_data_frame).mark_area(opacity=0.3, color="#052BF9").encode(
+    # kills_area = alt.Chart(final_data_frame).mark_area(opacity=0.3, color="#052BF9").encode(
+    kills_area = alt.Chart(final_data_frame).mark_area(opacity=1).encode(
         alt.X("match_number", title="Match number"),
         alt.Y(kills_type, title=kills_type_title),
         tooltip=[alt.Tooltip(kills_type),
@@ -226,7 +354,8 @@ else:
         kd_ratio_title = "EKIA Ratio"
 
     # Configures the line portion of the chart
-    kd_line = base.mark_line(stroke="#6610f2", interpolate="monotone").encode(
+    # kd_line = base.mark_line(stroke="#6610f2", interpolate="monotone").encode(
+    kd_line = base.mark_line(interpolate="monotone").encode(
         alt.Y(kd_ratio,
               axis=alt.Axis(title=kd_ratio_title, titleColor='#000000'))
     ).interactive()
@@ -244,30 +373,80 @@ else:
         st.markdown(get_table_download_link(final_data_frame_show), unsafe_allow_html=True)
 
     # ==== Accuracy component ==== #
-    average_accuracy = filtered_df["accuracy"].median()
+    st.markdown("---")
+    st.header("Player accuracy")
+
+    average_accuracy = filtered_df["accuracy"].mean()
     rounded_accuracy = "%0.2f" % average_accuracy
 
-    st.subheader(f"Average player accuracy is {rounded_accuracy}%")
+    # Defines columns
+    accuracy_col_1, accuracy_col_2 = st.beta_columns(2)
 
-    acc_chart_base = alt.Chart(filtered_df).encode(
-        alt.X("Index:T",
-              title="Match no.",
-              axis=alt.Axis)
-    )
+    # Decides what to display depending on if comparison data is enabled
+    if compare_data == "Yes":
+        with accuracy_col_1:
+            # Converts the accuracy dataframe to a float64 type from object
+            filtered_df["accuracy"] = pd.to_numeric(filtered_df["accuracy"])
+            game_accuracy_cw = filtered_df.loc[filtered_df["Game"] == "Cold War", "accuracy"].mean()
 
-    acc_chart = acc_chart_base.mark_area(opacity=0.3, color="#052BF9").encode(
-        # alt.X("Index:T"),
-        alt.X("Index", title="Match number"),
-        alt.Y("accuracy:Q", title="Accuracy"),
-        tooltip=[alt.Tooltip("accuracy", format="0.3"),
-                 alt.Tooltip("kills"),
-                 alt.Tooltip("deaths")],
-    )
+            # game_accuracy_cw_df = filtered_df[filtered_df["Game"] == "Cold War"]
+            # st.write(game_accuracy_cw_df)
+            # game_accuracy_cw_mean = game_accuracy_cw_df["accuracy"].mean(skipna=True)
+            # st.write(game_accuracy_cw)
 
-    layered_chart = alt.layer(acc_chart, kd_line).resolve_scale(
-        y="independent").interactive()
+            # game_accuracy_cw = filtered_df["Game"] == "Cold War"
+            # game_accuracy_bo4 = filtered_df["Game"] == "Black Ops 4"
+            # st.write(game_accuracy_cw)
+            # game_accuracy_mean_cw = filtered_df.loc[game_accuracy_cw, "accuracy"].mean()
+            # # game_accuracy_mean_bo4 = filtered_df.loc[game_accuracy_bo4, "accuracy"].mean()
 
-    st.altair_chart(layered_chart, use_container_width=True)
+            # average_accuracy_bo4 = filtered_df["accuracy"].median()
+            # rounded_accuracy_bo4 = "%0.2f" % average_accuracy_bo4
+
+            st.write(f"Average accuracy in Cold War is {game_accuracy_cw}%")
+
+        with accuracy_col_2:
+            st.write(f"Average accuracy in Black Ops 4 is {game_accuracy_mean_bo4}%")
+    else:
+        st.subheader(f"Average player accuracy is {rounded_accuracy}%")
+
+    acc_chart_1 = alt.Chart(final_data_frame).mark_area(line=True).transform_fold(
+        fold=["Game"],
+    ).encode(
+        alt.X("match_number", title="Match number"),
+        alt.Y("ekiadratio:Q", title="Accuracy"),
+        color="Game",
+        tooltip=[alt.Tooltip("Game"),
+                 alt.Tooltip(kills_type),
+                 alt.Tooltip("deaths"),
+                 alt.Tooltip("map_name"),
+                 alt.Tooltip("mode"),
+                 alt.Tooltip(kd_ratio, format="0.2"),
+                 alt.Tooltip("match_number")
+                 ]
+    ).interactive()
+
+    st.altair_chart(acc_chart_1, use_container_width=True)
+
+    # acc_chart_base = alt.Chart(filtered_df).encode(
+    #     alt.X("match_number:T",
+    #           title="Match no.",
+    #           axis=alt.Axis)
+    # )
+    #
+    # # acc_chart = acc_chart_base.mark_area(opacity=0.3, color="#052BF9").encode(
+    # acc_chart = acc_chart_base.mark_area().encode(
+    #     alt.X("match_number", title="Match number"),
+    #     alt.Y("accuracy:Q", title="Accuracy"),
+    #     tooltip=[alt.Tooltip("accuracy", format="0.3"),
+    #              alt.Tooltip("kills"),
+    #              alt.Tooltip("deaths")],
+    # )
+    #
+    # layered_chart = alt.layer(acc_chart, kd_line).resolve_scale(
+    #     y="independent").interactive()
+    #
+    # st.altair_chart(layered_chart, use_container_width=True)
 
     # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -338,7 +517,7 @@ else:
     # # # # # # # # # # # # # # # # # # # # # # # #
 
     kills_chart = alt.Chart(all_data_frame).mark_line(strokeWidth=2).encode(
-        alt.X("Index", title="Match number"),
+        alt.X("match_number", title="Match number"),
         alt.Y("kills", title="Total kills"),
         color="Game"
     )
@@ -350,13 +529,13 @@ else:
 
     # Sidebar footer
     with st.sidebar:
-        # Forces the info to the bottom
+        st.markdown("---")
         st.subheader("FAQ")
         kia_ekia_expander = st.beta_expander("Differences between EKIA and Kills", expanded=False)
         with kia_ekia_expander:
             st.write("**Kills** are enemies which you dealt the final damage to, resulting in their death. "
-                    "\n\n**EKIA** includes kills, as well as any other enemies who were killed by another player shortly "
-                    "after you dealt damage to them.")
+                     "\n\n**EKIA** includes kills, as well as any other enemies who were killed by another player shortly "
+                     "after you dealt damage to them.")
 
         data_delay = st.beta_expander("Data information", expanded=False)
         with data_delay:
@@ -366,7 +545,6 @@ else:
             )
 
         # Blank headers used as a cheap spacer
-        st.header("")
         st.header("")
         st.info(
             "[Jon Cording](https://www.linkedin.com/in/jon-cording) maintains this app."

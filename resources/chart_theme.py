@@ -39,9 +39,9 @@ def colour_pallete_checker(col1, col2, col3, col4, col5):
 def streamlit_theme():
     # font = "Segoe UI"
     # axis_font = "Segoe UI Semibold"
-    # IBM Plex Mono is the Streamlit default font
-    font = "IBM Plex Mono"
-    axis_font = "IBM Plex Mono"
+    # IBM Plex Sans is the Streamlit default font
+    font = "IBM Plex Sans"
+    axis_font = "IBM Plex Sans"
     primary_color = colour1_hex
     font_color = colour1_hex
     grey_color = "#f0f2f6"
@@ -100,7 +100,7 @@ def streamlit_theme():
                 "orient": "top",
             },
             "view": {
-                "height": 300
+                "height": 350
             },
             "range": {
                 "category": [colour1_hex, colour2_hex, colour3_hex, colour4_hex, colour5_hex],
@@ -155,6 +155,7 @@ def streamlit_theme():
 
 
 def streamlit_theme_alt():
+    # Currently not in use; this is default
     font = "IBM Plex Mono"
     primary_color = "#F63366"
     font_color = "#262730"

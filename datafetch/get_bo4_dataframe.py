@@ -1,5 +1,6 @@
 import requests
 import pandas as pd
+import numpy as np
 
 
 def load_data_bo4(username, platform):
@@ -10,9 +11,16 @@ def load_data_bo4(username, platform):
 
     result = requests.get(cod_data_url, headers=headers).json()
 
-    next_page_val = result["data"]["metadata"]["next"]
-    print(cod_data_url)
-    print(next_page_val)
+    # next_page_val = result["data"]["metadata"]["next"]
+
+    try:
+        next_page_val = result["data"]["metadata"]["next"]
+    except:
+        combo_df = pd.DataFrame()
+        return combo_df
+
+    # print(cod_data_url)
+    # print(next_page_val)
 
     # Initialise a bunch of blank lists for each column to be used in the final dataframe
     matchid_list = []
@@ -21,12 +29,10 @@ def load_data_bo4(username, platform):
     modename_list = []
     duration_list = []
     durationValues_list = []
-
     kills_list = []
     ekiadratio_list = []
     accuracy_list = []
     shotslanded_list = []
-    # highestmultikill_list = []
     ekia_list = []
     score_list = []
     headshots_list = []
@@ -193,13 +199,16 @@ def load_data_bo4(username, platform):
             next_page_val = result_2["data"]["metadata"]["next"]
         except:
             next_page_val = 0
+
+    combo_df["match_number"] = np.arange(1, len(combo_df) + 1)
+    combo_df["Game"] = "Black Ops 4"
+
     return combo_df
 
 
 # Test this module with the below
 # username_val = "Cording Xx"
 # platform_val = "xbl"
-#
 # load_data_bo4(username_val, platform_val)
 
 

@@ -8,8 +8,6 @@ import altair as alt
 import numpy as np
 import colours
 
-# TODO There is an issue when loading only the CW data instead of both Bo4 and CW.
-
 # Initialise the sidebar and gets the user's options
 with st.sidebar:
     playername = st.text_input("Enter your platform username here", "Cording Xx")

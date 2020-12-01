@@ -2,6 +2,7 @@ import requests
 import pandas as pd
 import numpy as np
 
+
 def load_data_mw(username, platform):
     formatted_username = username.replace(" ", "%20")
     cod_data_url = f"https://api.tracker.gg/api/v1/modern-warfare/matches/{platform}/{formatted_username}?type=mp" \
@@ -138,6 +139,7 @@ def load_data_mw(username, platform):
                           "Chrome/50.0.2661.102 Safari/537.36"}
 
         result_2 = requests.get(next_cod_data_url, headers=headers).json()
+        print(f"Next page: {next_page_val}")
 
         try:
             for match_data in result_2["data"]["matches"]:
@@ -274,3 +276,6 @@ def load_data_mw(username, platform):
 # print(df.head(5))
 # print(df.dtypes)
 # print(df.columns)
+#
+# match_id_count = df["match_id"].unique()
+# print(f"Total matches loaded: {len(match_id_count)}")

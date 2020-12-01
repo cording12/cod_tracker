@@ -210,5 +210,3 @@ def load_data_bo4(username, platform):
 # username_val = "Cording Xx"
 # platform_val = "xbl"
 # load_data_bo4(username_val, platform_val)
-
-

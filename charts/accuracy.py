@@ -1,5 +1,4 @@
 import altair as alt
-import streamlit as st
 
 
 def accuracy_compare_chart(
@@ -58,4 +57,6 @@ def accuracy_compare_chart(
                      ]
         ).interactive()
         chart_object = acc_chart
+
     return chart_object
+

@@ -223,6 +223,10 @@ def load_data_mw_short(username, platform, num_matches):
             for data_error in result_2["errors"]:
                 error_code = data_error["code"]
 
+        # Passing the Kills and KDR list into EKIA/EKIADRatio because
+        # these values are not present from this API. When comparing
+        # this data with other games, values appear as empty when
+        # comparing EKIA/EKIADRatio
         combo_df = pd.DataFrame(
             {
                 "match_id": matchid_list,
@@ -232,10 +236,12 @@ def load_data_mw_short(username, platform, num_matches):
                 "duration": duration_list,
                 "duration_mins": durationValues_list,
                 "kills": kills_list,
-                "ekiadratio": ekiadratio_list,
+                # "ekiadratio": ekiadratio_list,
+                "ekiadratio": kd_list,
                 "accuracy": accuracy_list,
                 "shotslanded": shotslanded_list,
-                "ekia": ekia_list,
+                # "ekia": ekia_list,
+                "ekia": kills_list,
                 "score": score_list,
                 "headshots": headshots_list,
                 "assists": assists_list,

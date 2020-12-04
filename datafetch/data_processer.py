@@ -13,6 +13,7 @@ import pandas as pd
 @st.cache(allow_output_mutation=True, show_spinner=False)
 def load_cw_data(plyr, pltf):
     """Loads the Cold War data via the load_data function"""
+    print("LOADING CW DATA")
     base_df = load_data(plyr, pltf)
     base_df.loc[:, "ekiadratio"] = pd.to_numeric(base_df["ekiadratio"])
     base_df.loc[:, "ekia"] = pd.to_numeric(base_df["ekia"])
@@ -54,6 +55,7 @@ def load_mw_data_short(plyr, pltf, nmbr):
     with st.spinner(f"Loading Modern Warfare data for {plyr} on {pltf_str}."
                     f"\n\n **Please note**: this may take a while the first time you load the data."):
 
+        print("LOADING MW DATA")
         player_data_mw = load_data_mw_short(plyr, pltf, nmbr)
 
         if player_data_mw.empty:
@@ -80,6 +82,7 @@ def load_bo4_data(plyr, pltf):
     with st.spinner(f"Loading Black Ops 4 data for {plyr} on {pltf_str}."
                     f"\n\n **Please note**: this may take a while the first time you load the data."):
 
+        print("LOADING BO4 DATA")
         player_data_bo4 = load_data_bo4(plyr, pltf)
 
         if player_data_bo4.empty:
@@ -100,6 +103,7 @@ def load_bo4_data_short(plyr, pltf, nmbr):
     with st.spinner(f"Loading Black Ops 4 data for {plyr} on {pltf_str}."
                     f"\n\n **Please note**: this may take a while the first time you load the data."):
 
+        print("LOADING BO4 DATA")
         player_data_bo4 = load_data_bo4_short(plyr, pltf, nmbr)
 
         if player_data_bo4.empty:

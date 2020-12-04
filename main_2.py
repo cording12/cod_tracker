@@ -6,19 +6,10 @@ import altair as alt
 import numpy as np
 
 from charts.accuracy import accuracy_compare_chart
+from charts.chart_theme import streamlit_theme
+from charts.kills import kills_compare_chart
 
-from resources.chart_theme import streamlit_theme
-from resources.custom_html import (
-    accuracy_widget,
-    assign_id,
-    bootstrap_css,
-    central_col_size_adjust,
-    custom_table,
-    format_para_size,
-    grid_test,  ##########
-    set_background_image_fill_overlay,
-)
-from resources.data_processer import (
+from datafetch.data_processer import (
     best_map,
     load_bo4_data_short,
     load_cw_data,
@@ -28,15 +19,33 @@ from resources.data_processer import (
     mode_img_url,
     mode_stats,
 )
-from user_download import get_table_download_link
+
+from resources.user_download import get_table_download_link
 
 from static.css.custom_theme import (
-    sidebar_format,
-    page_format,
     block_format,
+    bootstrap_css,
+    page_format,
+    sidebar_format,
+    hero,
 )
 
-# Uses the full page instead of narrow central column
+from static.html.custom_html import (
+    assign_id,
+    central_col_size_adjust,
+    custom_table,
+    data_widget_master_css,
+    data_widget_1_col,
+    data_widget_2_col,
+    data_widget_3_col,
+    data_widget_5_col,
+    format_para_size,
+    grid_test,  ##########
+    set_background_image_fill_overlay,
+    st_info_custom,
+)
+
+# Uses the full page instead of narrow central column and configures page info
 st.set_page_config(
     layout="wide",
     page_title="CoD: Stat Tracker",
@@ -48,20 +57,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Load Bootstrap
-st.markdown(bootstrap_css(), unsafe_allow_html=True)
-
 # Set the central column width
 st.markdown(central_col_size_adjust("main", 55), unsafe_allow_html=True)
-
-# Format sidebar
-st.markdown(sidebar_format(), unsafe_allow_html=True)
-
-# Format page
-st.markdown(page_format(), unsafe_allow_html=True)
-
-# Format StBlock elements
-st.markdown(block_format(), unsafe_allow_html=True)
+# Load CSS #
+st.markdown(bootstrap_css(), unsafe_allow_html=True)  # Load Bootstrap
+st.markdown(sidebar_format(), unsafe_allow_html=True)  # Format sidebar
+st.markdown(page_format(), unsafe_allow_html=True)  # Format page
+st.markdown(block_format(), unsafe_allow_html=True)  # Format StBlock elements
+st.markdown(data_widget_master_css(), unsafe_allow_html=True)  # Format data widgets
 
 # Initialise the sidebar and gets the user's options
 with st.sidebar:
@@ -78,7 +81,11 @@ with st.sidebar:
 
     comp_bo4 = st.checkbox("Black Ops 4")
     comp_mw = st.checkbox("Modern Warfare")
-    st.markdown("---")
+
+    st.header("")
+    comp_text = "View all raw data?"
+    st.markdown(format_para_size(0.8, comp_text), unsafe_allow_html=True)
+    show_data = st.checkbox("Show data")
 
 # Converts platform to required string for API call
 if platform == "Xbox":
@@ -138,13 +145,8 @@ def main():
         # Generate final dataframe with all options included
         all_data_frame = pd.concat(dataframes)
 
-        # Add option to show data
-        with st.sidebar:
-            show_data = st.checkbox("Show raw data")
-
-        # Page title and text
-        st.title("Call of Duty: Cold War")
-        st.write(f"Showing player data for {playername} on {platform}.")
+        # Page hero
+        st.markdown(hero(playername, platform), unsafe_allow_html=True)
 
         # Check if comparing data to draw a select box if so
         if comp_mw or comp_bo4:
@@ -169,315 +171,305 @@ def main():
             kills_type_2 = kills_type
             kd_ratio_2 = kd_ratio
 
-        # Define two columns
-        col1, col2 = st.beta_columns(2)
-        data_comp_df = all_data_frame.loc[(all_data_frame.Game == games_to_compare)]
-
-        with col1:
-            # Load data from functions
-            map_table_top3 = map_stats(data_comp_df, kills_type_2, kd_ratio_2, 3)
-            best_map_name = best_map(map_table_top3, kd_ratio_2)
-            best_map_image = map_img_url(data_comp_df, best_map_name)
-
-            st.markdown(grid_test(best_map_name, "Column 2", "Column 3"), unsafe_allow_html=True)
-
-            st.subheader("Map summary")
-            # Assigns unique ID to the div so we can style it
-            st.markdown(assign_id("col_1_map_summary"), unsafe_allow_html=True)
-
-            # Styles the above named Div with given BG image
-            st.markdown(set_background_image_fill_overlay("col_1_map_summary", best_map_image), unsafe_allow_html=True)
-
-            # Declare variables to pass to custom HTML table
-            h1 = "Map"
-            h2 = "Kills"
-            h3 = kd_type_str
-
-            map1 = map_table_top3.loc[0, "map_name"]
-            map2 = map_table_top3.loc[1, "map_name"]
-            map3 = map_table_top3.loc[2, "map_name"]
-            map1k = "%0.0f" % map_table_top3.loc[0, kills_type_2]
-            map2k = "%0.0f" % map_table_top3.loc[1, kills_type_2]
-            map3k = "%0.0f" % map_table_top3.loc[2, kills_type_2]
-            map1kd = "%0.2f" % map_table_top3.loc[0, kd_ratio_2]
-            map2kd = "%0.2f" % map_table_top3.loc[1, kd_ratio_2]
-            map3kd = "%0.2f" % map_table_top3.loc[2, kd_ratio_2]
-
-            # Draws the custom table
-            st.markdown(custom_table(
-                h1=h1, h2=h2, h3=h3,
-                map1=map1, map2=map2, map3=map3,
-                map1k=map1k, map2k=map2k, map3k=map3k,
-                map1kd=map1kd, map2kd=map2kd, map3kd=map3kd
-            ), unsafe_allow_html=True)
-
-        with col2:
-            # Load data from functions
-            mode_table_top3 = mode_stats(data_comp_df, kills_type_2, kd_ratio_2, 3)
-            best_mode_image = mode_img_url()
-
-            st.subheader("Mode summary")
-            st.markdown(assign_id("col_2_mode_summary"), unsafe_allow_html=True)
-            st.markdown(set_background_image_fill_overlay("col_2_mode_summary", best_mode_image),
-                        unsafe_allow_html=True)
-
-            # Declare variables to pass to custom HTML table
-            h1 = "Mode"
-            h2 = "Kills"
-            h3 = kd_type_str
-
-            mode1 = mode_table_top3.loc[0, "mode"]
-            mode2 = mode_table_top3.loc[1, "mode"]
-            mode3 = mode_table_top3.loc[2, "mode"]
-            mode1k = "%0.0f" % mode_table_top3.loc[0, kills_type_2]
-            mode2k = "%0.0f" % mode_table_top3.loc[1, kills_type_2]
-            mode3k = "%0.0f" % mode_table_top3.loc[2, kills_type_2]
-            mode1kd = "%0.2f" % mode_table_top3.loc[0, kd_ratio_2]
-            mode2kd = "%0.2f" % mode_table_top3.loc[1, kd_ratio_2]
-            mode3kd = "%0.2f" % mode_table_top3.loc[2, kd_ratio_2]
-
-            # Draws the custom table
-            st.markdown(custom_table(
-                h1=h1, h2=h2, h3=h3,
-                map1=mode1, map2=mode2, map3=mode3,
-                map1k=mode1k, map2k=mode2k, map3k=mode3k,
-                map1kd=mode1kd, map2kd=mode2kd, map3kd=mode3kd
-            ), unsafe_allow_html=True)
+        # # Define two columns
+        # col1, col2 = st.beta_columns(2)
+        # data_comp_df = all_data_frame.loc[(all_data_frame.Game == games_to_compare)]
+        #
+        # with col1:
+        #     # Load data from functions
+        #     map_table_top3 = map_stats(data_comp_df, kills_type_2, kd_ratio_2, 3)
+        #     best_map_name = best_map(map_table_top3, kd_ratio_2)
+        #     best_map_image = map_img_url(data_comp_df, best_map_name)
+        #
+        #     st.markdown(grid_test(best_map_name, "Column 2", "Column 3"), unsafe_allow_html=True)
+        #
+        #     st.subheader("Map summary")
+        #     # Assigns unique ID to the div so we can style it
+        #     st.markdown(assign_id("col_1_map_summary"), unsafe_allow_html=True)
+        #
+        #     # Styles the above named Div with given BG image
+        #     st.markdown(set_background_image_fill_overlay("col_1_map_summary", best_map_image), unsafe_allow_html=True)
+        #
+        #     # Declare variables to pass to custom HTML table
+        #     h1 = "Map"
+        #     h2 = "Kills"
+        #     h3 = kd_type_str
+        #
+        #     map1 = map_table_top3.loc[0, "map_name"]
+        #     map2 = map_table_top3.loc[1, "map_name"]
+        #     map3 = map_table_top3.loc[2, "map_name"]
+        #     map1k = "%0.0f" % map_table_top3.loc[0, kills_type_2]
+        #     map2k = "%0.0f" % map_table_top3.loc[1, kills_type_2]
+        #     map3k = "%0.0f" % map_table_top3.loc[2, kills_type_2]
+        #     map1kd = "%0.2f" % map_table_top3.loc[0, kd_ratio_2]
+        #     map2kd = "%0.2f" % map_table_top3.loc[1, kd_ratio_2]
+        #     map3kd = "%0.2f" % map_table_top3.loc[2, kd_ratio_2]
+        #
+        #     # Draws the custom table
+        #     st.markdown(custom_table(
+        #         h1=h1, h2=h2, h3=h3,
+        #         map1=map1, map2=map2, map3=map3,
+        #         map1k=map1k, map2k=map2k, map3k=map3k,
+        #         map1kd=map1kd, map2kd=map2kd, map3kd=map3kd
+        #     ), unsafe_allow_html=True)
+        #
+        # with col2:
+        #     # Load data from functions
+        #     mode_table_top3 = mode_stats(data_comp_df, kills_type_2, kd_ratio_2, 3)
+        #     best_mode_image = mode_img_url()
+        #
+        #     st.subheader("Mode summary")
+        #     st.markdown(assign_id("col_2_mode_summary"), unsafe_allow_html=True)
+        #     st.markdown(set_background_image_fill_overlay("col_2_mode_summary", best_mode_image),
+        #                 unsafe_allow_html=True)
+        #
+        #     # Declare variables to pass to custom HTML table
+        #     h1 = "Mode"
+        #     h2 = "Kills"
+        #     h3 = kd_type_str
+        #
+        #     mode1 = mode_table_top3.loc[0, "mode"]
+        #     mode2 = mode_table_top3.loc[1, "mode"]
+        #     mode3 = mode_table_top3.loc[2, "mode"]
+        #     mode1k = "%0.0f" % mode_table_top3.loc[0, kills_type_2]
+        #     mode2k = "%0.0f" % mode_table_top3.loc[1, kills_type_2]
+        #     mode3k = "%0.0f" % mode_table_top3.loc[2, kills_type_2]
+        #     mode1kd = "%0.2f" % mode_table_top3.loc[0, kd_ratio_2]
+        #     mode2kd = "%0.2f" % mode_table_top3.loc[1, kd_ratio_2]
+        #     mode3kd = "%0.2f" % mode_table_top3.loc[2, kd_ratio_2]
+        #
+        #     # Draws the custom table
+        #     st.markdown(custom_table(
+        #         h1=h1, h2=h2, h3=h3,
+        #         map1=mode1, map2=mode2, map3=mode3,
+        #         map1k=mode1k, map2k=mode2k, map3k=mode3k,
+        #         map1kd=mode1kd, map2kd=mode2kd, map3kd=mode3kd
+        #     ), unsafe_allow_html=True)
 
         # Begin main content
-        st.markdown("---")
-        st.title("Player statistics")
+        # st.markdown("---")
+        # st.title("Player statistics")
 
         # Map and mode filters
-        filter_expander = st.beta_expander("Filter data", expanded=False)
-        with filter_expander:
-            # Lists all the maps
-            map_names_unique = all_data_frame["map_name"].unique()
-            map_filter = st.multiselect("Map", sorted(map_names_unique))
+        filter_container = st.beta_container()
 
-            # Configures dataframe with or without map filter
-            if not map_filter:
-                map_df = all_data_frame
-                map_df.loc[:, "match_number"] = np.arange(1, len(map_df) + 1)
-            else:
-                map_df = all_data_frame[all_data_frame["map_name"].isin(map_filter)]
-                map_df.loc[:, "match_number"] = np.arange(1, len(map_df) + 1)
+        with filter_container:
+            st.markdown("<h4>Player statistics</h4>", unsafe_allow_html=True)
+            filter_expander = st.beta_expander("Filter data", expanded=False)
+            with filter_expander:
+                # Lists all the maps
+                map_names_unique = all_data_frame["map_name"].unique()
+                map_filter = st.multiselect("Map", sorted(map_names_unique))
 
-            # Configures game modes available based on map selected
-            game_modes_unique = map_df["mode"].unique()
-            mode_filter = st.multiselect("Game mode", sorted(game_modes_unique))
-
-            # Configures dataframe with or without the mode filter
-            if not mode_filter:
-                filtered_df = map_df
-                filtered_df.loc[:, "match_number"] = np.arange(1, len(filtered_df) + 1)
-            else:
-                filtered_df = map_df[map_df["mode"].isin(mode_filter)]
-                filtered_df.loc[:, "match_number"] = np.arange(1, len(filtered_df) + 1)
-
-            # Added the slider into a 99% width column
-            # without the column, the end of the slider clips inside the dropdown
-            col1_slider, col_empty = st.beta_columns((0.99, 0.01))
-            with col1_slider:
-                # Adds the slider using maximum number of Cold War matches for comparison purposes
-                count_col = len(filtered_df[filtered_df["Game"] == "Cold War"])
-                if count_col == 0:
-                    slider_max_val_int = 1
+                # Configures dataframe with or without map filter
+                if not map_filter:
+                    map_df = all_data_frame
+                    map_df.loc[:, "match_number"] = np.arange(1, len(map_df) + 1)
                 else:
-                    slider_max_val_int = int(count_col)
+                    map_df = all_data_frame[all_data_frame["map_name"].isin(map_filter)]
+                    map_df.loc[:, "match_number"] = np.arange(1, len(map_df) + 1)
 
-                recent_matches = st.slider("Show the most recent matches:",
-                                           min_value=0,
-                                           max_value=slider_max_val_int,
-                                           value=slider_max_val_int)
+                # Configures game modes available based on map selected
+                game_modes_unique = map_df["mode"].unique()
+                mode_filter = st.multiselect("Game mode", sorted(game_modes_unique))
 
-            dataframes_2 = {}
+                # Configures dataframe with or without the mode filter
+                if not mode_filter:
+                    filtered_df = map_df
+                    filtered_df.loc[:, "match_number"] = np.arange(1, len(filtered_df) + 1)
+                else:
+                    filtered_df = map_df[map_df["mode"].isin(mode_filter)]
+                    filtered_df.loc[:, "match_number"] = np.arange(1, len(filtered_df) + 1)
 
-            try:
-                update_match_numbers_mw = filtered_df[filtered_df["Game"] == "Modern Warfare"]
-                update_match_numbers_mw.loc[:, "match_number"] = np.arange(1, len(update_match_numbers_mw) + 1)
-                dataframes_2["MW2"] = pd.DataFrame(update_match_numbers_mw.head(recent_matches))
-            except:
-                update_match_numbers_mw = pd.DataFrame()
+                # Added the slider into a 99% width column
+                # without the column, the end of the slider clips inside the dropdown
+                col1_slider, col_empty = st.beta_columns((0.9999, 0.0001))
+                with col1_slider:
+                    # Adds the slider using maximum number of Cold War matches for comparison purposes
+                    count_col = len(filtered_df[filtered_df["Game"] == "Cold War"])
+                    if count_col == 0:
+                        slider_max_val_int = 1
+                    else:
+                        slider_max_val_int = int(count_col)
 
-            try:
-                update_match_numbers_bo4 = filtered_df[filtered_df["Game"] == "Black Ops 4"]
-                update_match_numbers_bo4.loc[:, "match_number"] = np.arange(1, len(update_match_numbers_bo4) + 1)
-                dataframes_2["BO42"] = pd.DataFrame(update_match_numbers_bo4.head(recent_matches))
-            except:
-                dataframes_2["BO4"] = pd.DataFrame()
+                    recent_matches = st.slider("Show the most recent matches:",
+                                               min_value=0,
+                                               max_value=slider_max_val_int,
+                                               value=slider_max_val_int)
 
-            try:
-                update_match_numbers_cw = filtered_df[filtered_df["Game"] == "Cold War"]
-                update_match_numbers_cw.loc[:, "match_number"] = np.arange(1, len(update_match_numbers_cw) + 1)
-                dataframes_2["CW2"] = pd.DataFrame(update_match_numbers_cw.head(recent_matches))
-            except:
-                dataframes_2["CW"] = pd.DataFrame()
+                dataframes_2 = {}
 
-            remerge = pd.concat(dataframes_2)
+                try:
+                    update_match_numbers_mw = filtered_df[filtered_df["Game"] == "Modern Warfare"]
+                    update_match_numbers_mw.loc[:, "match_number"] = np.arange(1, len(update_match_numbers_mw) + 1)
+                    dataframes_2["MW2"] = pd.DataFrame(update_match_numbers_mw.head(recent_matches))
+                except:
+                    update_match_numbers_mw = pd.DataFrame()
 
-            final_data_frame = remerge
+                try:
+                    update_match_numbers_bo4 = filtered_df[filtered_df["Game"] == "Black Ops 4"]
+                    update_match_numbers_bo4.loc[:, "match_number"] = np.arange(1, len(update_match_numbers_bo4) + 1)
+                    dataframes_2["BO42"] = pd.DataFrame(update_match_numbers_bo4.head(recent_matches))
+                except:
+                    dataframes_2["BO4"] = pd.DataFrame()
 
-            if show_data:
-                st.write(final_data_frame)
-                st.markdown(get_table_download_link(final_data_frame), unsafe_allow_html=True)
+                try:
+                    update_match_numbers_cw = filtered_df[filtered_df["Game"] == "Cold War"]
+                    update_match_numbers_cw.loc[:, "match_number"] = np.arange(1, len(update_match_numbers_cw) + 1)
+                    dataframes_2["CW2"] = pd.DataFrame(update_match_numbers_cw.head(recent_matches))
+                except:
+                    dataframes_2["CW"] = pd.DataFrame()
 
+                remerge = pd.concat(dataframes_2)
+
+                # Our final DF with all data after filtering etc.
+                final_data_frame = remerge
+
+                # Splitting the DF into the respective games for use in charts/tables etc.
+                final_data_frame_cw = final_data_frame[final_data_frame["Game"] == "Cold War"]
+                final_data_frame_mw = final_data_frame[final_data_frame["Game"] == "Modern Warfare"]
+                final_data_frame_bo4 = final_data_frame[final_data_frame["Game"] == "Black Ops 4"]
+
+            total_kills = final_data_frame["kills"].sum()
+            total_deaths = final_data_frame["deaths"].sum()
+            calculated_kd = total_kills / total_deaths
+            average_kd = final_data_frame[kd_ratio_2].mean()
+            average_accuracy = final_data_frame["accuracy"].mean()
+
+            st.markdown(data_widget_5_col("Total kills", f"{total_kills:,.0f}",
+                                          "Total deaths", f"{total_deaths:,.0f}",
+                                          f"Overall {kd_type_str}", f"{calculated_kd:0.2f}",
+                                          f"Average {kd_type_str}", f"{average_kd:0.2f}",
+                                          "Average accuracy", f"{average_accuracy:0.1f}%"), unsafe_allow_html=True)
 
         # Imports and applies Altair theme from chart_theme.py
         # This will apply to all charts on the page
         alt.themes.register("streamlit", streamlit_theme)
         alt.themes.enable("streamlit")
 
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # KD component
-        # average_kd = final_data_frame[kd_ratio].mean()
-        # rounded_kd = "%0.2f" % average_kd
+        # # Defines columns
+        # kills_col_1, kills_col_2 = st.beta_columns(2)
+        #
+        # # Decides what to display depending on if comparison data is enabled
+        # if comp_mw or comp_bo4:
+        #     with kills_col_1:
+        #         game_kd_cw = filtered_df.loc[filtered_df["Game"] == "Cold War", kd_ratio].mean()
+        #         st.write(f"Average {kd_type_str} in Cold War is **{game_kd_cw:0.2f}**")
+        #
+        #     with kills_col_2:
+        #         game_kd_bo4 = filtered_df.loc[filtered_df["Game"] == "Black Ops 4", kd_ratio].mean()
+        #         st.write(f"Average {kd_type_str} in Black Ops 4 is **{game_kd_bo4:0.2f}**")
+        # else:
+        #     game_kd_cw = filtered_df.loc[filtered_df["Game"] == "Cold War", kd_ratio].mean()
+        #     st.write(f"Average {kd_type_str} in Cold War is **{game_kd_cw:0.2f}**")
 
-        st.header("Player kills")
-        # st.write(f"Average {kd_type_str} is {rounded_kd}")
+        # ==== Kills component ==== #
+        container_kills = st.beta_container()
+        with container_kills:
+            st.markdown("<h4>Player kills</h4>", unsafe_allow_html=True)
 
-        # Defines columns
-        kills_col_1, kills_col_2 = st.beta_columns(2)
+            get_chart = kills_compare_chart(
+                comp_mw, comp_bo4,
+                final_data_frame,
+                kills_type_2, kd_ratio_2
+            )
 
-        # Decides what to display depending on if comparison data is enabled
-        if comp_mw or comp_bo4:
-            with kills_col_1:
-                # Converts the accuracy dataframe to a float64 type from object
-                # average_kd = final_data_frame[kd_ratio].mean()
-                # filtered_df["accuracy"] = pd.to_numeric(filtered_df["accuracy"])
-                game_kd_cw = filtered_df.loc[filtered_df["Game"] == "Cold War", kd_ratio].mean()
-                st.write(f"Average {kd_type_str} in Cold War is **{game_kd_cw:0.2f}**")
+            kd_average = final_data_frame[kd_ratio_2].mean()
+            kd_max = final_data_frame[kd_ratio_2].max()
 
-            with kills_col_2:
-                # filtered_df["accuracy"] = pd.to_numeric(filtered_df["accuracy"])
-                game_kd_bo4 = filtered_df.loc[filtered_df["Game"] == "Black Ops 4", kd_ratio].mean()
-                st.write(f"Average {kd_type_str} in Black Ops 4 is **{game_kd_bo4:0.2f}**")
-        else:
-            game_kd_cw = filtered_df.loc[filtered_df["Game"] == "Cold War", kd_ratio].mean()
-            st.write(f"Average {kd_type_str} in Cold War is **{game_kd_cw:0.2f}**")
+            acc_col1, acc_col2 = st.beta_columns((0.25, 0.75))
+            with acc_col1:
+                rounded_kd = "%0.2f" % kd_average
+                rounded_kd_best = "%0.2f" % kd_max
+                st.markdown(data_widget_1_col(f"Average {kd_type_str}", rounded_kd,
+                                              f"Highest {kd_type_str}", rounded_kd_best),
+                            unsafe_allow_html=True)
 
-        # Figures out whether to use EKIA or Kills for axis titles
-        if kills_type == "ekia":
-            kills_type_title = "EKIA"
-        elif kills_type == "kills":
-            kills_type_title = "Kills"
-
-        # Configures the area portion of the chart
-        kills_area = alt.Chart(final_data_frame).transform_fold(
-            [kills_type, kd_ratio]
-        ).mark_area().encode(
-            alt.X("match_number:Q", title="Match number"),
-            alt.Y(kills_type, title=kills_type_title),
-            tooltip=[alt.Tooltip(kills_type),
-                     alt.Tooltip("deaths"),
-                     alt.Tooltip("map_name"),
-                     alt.Tooltip("mode"),
-                     alt.Tooltip(kd_ratio, format="0.2")
-                     ],
-        )
-
-        # Figures out whether to use EKIAKDR or KDR for titles
-        if kd_ratio == "kd":
-            kd_ratio_title = "KD Ratio"
-        elif kd_ratio == "ekiadratio":
-            kd_ratio_title = "EKIA Ratio"
-
-        # Configures the line portion of the chart
-        # kd_line = base.mark_line(stroke="#6610f2", interpolate="monotone").encode(
-        kd_line = alt.Chart(final_data_frame).mark_line(interpolate="monotone").encode(
-            alt.X("match_number:Q"),
-            alt.Y(kd_ratio, title=kd_ratio_title),
-        ).interactive()
-
-        area_plot = alt.layer(kills_area, kd_line).resolve_scale(
-            y="independent").interactive()
-
-        # Plots the data as a chart
-        st.altair_chart(area_plot, use_container_width=True)
-
-        # Test linear regression plot
-
-        kd_points = alt.Chart(final_data_frame).mark_point().encode(
-            x="match_number",
-            y="deaths",
-        )
-
-        kd_reg_line = kd_points.transform_loess("match_number", "deaths").mark_line()
-
-        # kd_reg = kd_points + kd_points.transform_regression("match_number", kd_ratio).mark_line()
-        lyr = alt.layer(kd_points, kd_reg_line)
-        st.altair_chart(kd_reg_line, use_container_width=True)
-
-        if show_data:
-            st.write("Player data:")
-            final_data_frame_show = final_data_frame[
-                ["map_name", "mode", "ekia", "ekiadratio", "kills", "kd", "deaths"]]
-            st.write(final_data_frame_show)
-            st.markdown(get_table_download_link(final_data_frame_show), unsafe_allow_html=True)
+            with acc_col2:
+                st.altair_chart(get_chart, use_container_width=True)
 
         # ==== Accuracy component ==== #
         container = st.beta_container()
         with container:
-            # st.write(final_data_frame)
+            st.markdown("<h4>Player accuracy</h4>", unsafe_allow_html=True)
 
-            if show_data:
-                st.write(final_data_frame)
-                st.markdown(get_table_download_link(final_data_frame), unsafe_allow_html=True)
-
+            # Pass data and variables to chart function
             get_chart = accuracy_compare_chart(
                 comp_mw, comp_bo4,
                 final_data_frame,
                 kills_type_2, kd_ratio_2
             )
 
-            accuracy_average = final_data_frame["accuracy"].mean()
-            accuracy_max = final_data_frame["accuracy"].max()
+            # Get accuracy avg and max for Cold War
+            accuracy_average = final_data_frame_cw["accuracy"].mean()
+            accuracy_max = final_data_frame_cw["accuracy"].max()
 
-            # Puts the heading in the content box. H4 has custom css
-            st.markdown("<h4>Player accuracy</h4>", unsafe_allow_html=True)
-
-            newcol, newcol2 = st.beta_columns((0.75, 0.25))
-            with newcol:
+            acc_col1, acc_col2 = st.beta_columns((0.75, 0.25))
+            with acc_col1:
                 st.altair_chart(get_chart, use_container_width=True)
 
-            with newcol2:
-                rounded_accuracy = "%0.2f" % accuracy_average
-                rounded_accuracy_best = "%0.2f" % accuracy_max
+            with acc_col2:
+                # Check for comparison
+                if comp_mw or comp_bo4:
+                    # If comparing both games
+                    if comp_mw and comp_bo4:
+                        accuracy_average_mw = final_data_frame_mw["accuracy"].mean()
+                        accuracy_max_mw = final_data_frame_mw["accuracy"].max()
 
-                st.markdown(accuracy_widget(rounded_accuracy, rounded_accuracy_best), unsafe_allow_html=True)
+                        accuracy_average_bo4 = final_data_frame_bo4["accuracy"].mean()
+                        accuracy_max_bo4 = final_data_frame_bo4["accuracy"].max()
 
-            st.write(final_data_frame.columns)
+                        st.markdown(data_widget_3_col("Cold War", "Black Ops 4", "Modern Warfare",
+                                                      f"{accuracy_average:0.1f}%",
+                                                      f"{accuracy_average_bo4:0.1f}%",
+                                                      f"{accuracy_average_mw:0.1f}%",
+                                                      f"{accuracy_max:0.1f}%",
+                                                      f"{accuracy_max_bo4:0.1f}%",
+                                                      f"{accuracy_max_mw:0.1f}%",
+                                                      ), unsafe_allow_html=True)
+                    # If only comparing one game, isolate which one
+                    else:
+                        if comp_mw:
+                            accuracy_average_comp = final_data_frame_mw["accuracy"].mean()
+                            accuracy_max_comp = final_data_frame_mw["accuracy"].max()
+                            comparison_game = "Modern Warfare"
+                        else:
+                            accuracy_average_comp = final_data_frame_bo4["accuracy"].mean()
+                            accuracy_max_comp = final_data_frame_bo4["accuracy"].max()
+                            comparison_game = "Black Ops 4"
 
-            if show_data:
-                final_data_frame_show = final_data_frame[
-                    ["match_id", "accuracy", "Game"]]
-                st.write("Player data:")
-                st.write(final_data_frame_show)
-                st.markdown(get_table_download_link(final_data_frame_show), unsafe_allow_html=True)
+                        st.markdown(data_widget_2_col("Cold War", comparison_game,
+                                                      f"{accuracy_average:0.1f}%",
+                                                      f"{accuracy_average_comp:0.1f}%",
+                                                      f"{accuracy_max:0.1f}%",
+                                                      f"{accuracy_max_comp:0.1f}%"
+                                                      ), unsafe_allow_html=True)
+                # Comparing neither game
+                elif not comp_mw or comp_bo4:
+                    st.markdown(data_widget_1_col("Average accuracy", f"{accuracy_average:0.1f}%",
+                                                  "Highest accuracy", f"{accuracy_max:0.1f}%"),
+                                unsafe_allow_html=True)
 
+        # ==== Raw data component ==== #
+        if show_data:
+            container_data = st.beta_container()
+            with container_data:
+                st.markdown("<h4>Raw data</h4>", unsafe_allow_html=True)
+                st.write(final_data_frame)
+                st.markdown(get_table_download_link(final_data_frame), unsafe_allow_html=True)
 
         # Sidebar footer
         with st.sidebar:
-            st.markdown("---")
-            st.subheader("FAQ")
-            kia_ekia_expander = st.beta_expander("Differences between EKIA and Kills", expanded=False)
-            with kia_ekia_expander:
-                st.write("**Kills** are enemies which you dealt the final damage to, resulting in their death. "
-                         "\n\n**EKIA** includes kills, as well as any other enemies who were killed by another player shortly "
-                         "after you dealt damage to them.")
-
-            data_delay = st.beta_expander("Data information", expanded=False)
-            with data_delay:
-                st.write(
-                    "Data provided in this app is on a 30 minute lag and hence may not be "
-                    "the most up-to-date."
-                )
-
-            # Blank headers used as a cheap spacer
             st.header("")
-            st.info(
-                "[Jon Cording](https://www.linkedin.com/in/jon-cording) maintains this app."
+            st.subheader("Data note:")
+            st.write(
+                "Data provided in this app is on a 30 minute lag and hence may not be "
+                "the most up-to-date."
             )
+
+            st.header("")
+            st.markdown(st_info_custom("maintains this app.", "Jon Cording", "https://www.linkedin.com/in/jon-cording"),
+                        unsafe_allow_html=True)
 
 
 main()

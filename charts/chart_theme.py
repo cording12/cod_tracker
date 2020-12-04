@@ -29,7 +29,7 @@ colour5_hex = "#" + colour5
 text_colour = "071128"
 text_colour_hex = "#" + text_colour
 
-text_colour_light = "adb5bd" # 98a6ad
+text_colour_light = "adb5bd"  # 98a6ad
 text_colour_light_hex = "#" + text_colour_light
 
 text_colour_darker = "98a6ad"
@@ -45,6 +45,7 @@ def colour_pallete_checker(col1, col2, col3, col4, col5):
     col5r = col5
     view_url = f"https://coolors.co/{col1r}-{col2r}-{col3r}-{col4r}-{col5r}"
     return view_url
+
 
 # print(colour_pallete_checker(colour1, colour2, colour3, colour4, colour5))
 
@@ -165,7 +166,6 @@ def streamlit_theme():
         }
     }
     return config
-
 
 # def streamlit_theme_backup():
 #     font = "Nunito,sans-serif"
